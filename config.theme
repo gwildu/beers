@@ -1,0 +1,65 @@
+/*******************************
+        Config
+*******************************/
+
+/*
+  Docs: http://learnsemantic.com/developing/customizing.html#setting-global-variables
+*/
+
+/*-------------------
+ Theme selection
+---------------------*/
+
+/*
+  (Required)
+  Set which theme to use for which component.
+  If you only want to use a private/project theme, use "private"
+*/
+
+/* Util */
+@util-pull: 'gwi-theme-common';
+@util-box: 'gwi-theme-common';
+@util-clearfix: 'gwi-theme-common';
+
+/* Elements */
+@button: 'gwi-theme-common';
+@typo: 'private';
+@form-elements: 'gwi-theme-common';
+@icons: 'gwi-theme-common';
+@image: 'gwi-theme-common';
+
+/* Components */
+@panel: 'gwi-theme-common';
+@alert: 'gwi-theme-common';
+@pricebox: 'gwi-theme-common';
+@textsample: 'gwi-theme-common';
+@myList_entry: 'gwi-theme-common';
+@myList_list: 'gwi-theme-common';
+@normalize: 'gwi-theme-common';
+@overlay: 'gwi-theme-common';
+
+/* Pages */
+@myList_home: 'gwi-theme-common';
+
+/*-------------------
+ Additional configuration
+---------------------*/
+
+/*
+  Configure where you host your plugins, components and project specific stylings.
+  Paths are relative to the location of this theme.config file.
+  The order of the paths specified below is the order in which LESS variables will be loaded.
+*/
+
+// Path to your public NPM modules (usually where you install themes and shared FrontendComponents into)
+@publicThemeFolder : 'node_modules';
+// Path to your project specific theme variables
+@projectThemeFolder : 'src/styles';
+
+/*-------------------
+ Initialization - Don't touch unless you know what you do
+---------------------*/
+
+@import "@{publicThemeFolder}/gwi-theming/theme.less";
+
+/* End Config */

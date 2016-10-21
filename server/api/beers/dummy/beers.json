@@ -1,0 +1,47 @@
+[
+  {
+    "id": "singha",
+    "name": "Singha",
+    "votes": [],
+    "averageVote": 5,
+    "images": [
+      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/singha_xrehlp.jpg"
+    ]
+  },
+  {
+    "id": "rosengarten_maisgold_mini",
+    "name": "Rosengarten Maisgold Mini",
+    "votes": [],
+    "averageVote": 0,
+    "images": [
+      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/maisgold_kdy1fl.jpg"
+    ]
+  },
+  {
+    "id": "sudwerk_goldminer",
+    "name": "Sudwerk Gold Miner",
+    "votes": [],
+    "averageVote": 0,
+    "images": [
+      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/goldminer_ay0d8p.png"
+    ]
+  },
+  {
+    "id": "chopfab",
+    "name": "CHOPFAB",
+    "votes": [],
+    "averageVote": 0,
+    "images": [
+      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/chopfab_b9kjbv.jpg"
+    ]
+  },
+  {
+    "id": "brandlöscher",
+    "name": "Brandlöscher",
+    "votes": [],
+    "averageVote": 0,
+    "images": [
+      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/brandloescher_xbsojq.jpg"
+    ]
+  }
+]
