@@ -2,7 +2,7 @@
   "name": "beers",
   "version": "1.0.0-alpha.0",
   "description": "A beer rating application",
-  "main": "src/index.js",
+  "main": "server.js",
   "engines": {
     "node": "^6.0.0"
   },
