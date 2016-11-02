@@ -36,4 +36,4 @@ jspm_packages
 
 .idea/
 
-dist/
+#dist/
