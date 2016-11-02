@@ -30,7 +30,7 @@ function startServer () {
   
   // register express helpers
   // those will be exposed to the templating engine
-  app.locals.helpers = expressHelpers
+  app.locals.helpers = viewHelpers
   
   // warm up cache by precompiling pug/jade templates
   jade.compileFile(path.join(SERVER_PATH, '/views/index.jade'), { cache: true })
