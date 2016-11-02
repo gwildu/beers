@@ -58,6 +58,7 @@
     "browserify-hmr": "^0.3.5",
     "envify": "^3.4.1",
     "hashmark": "^4.1.0",
+    "jade": "^1.11.0",
     "live-reload": "^1.1.0",
     "parallelshell": "^2.0.0",
     "replaceinfiles": "^1.1.4",
