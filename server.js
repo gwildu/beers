@@ -19,8 +19,8 @@ function startServer () {
   var path = require('path')
   var express = require('express')
   var debug = require('debug')('webapp')
-  var pug = require('pug')
-  var expressHelpers = require(path.join(SERVER_PATH, '/utils/express-helpers'))
+  var jade = require('jade')
+  var viewHelpers = require(path.join(SERVER_PATH, '/utils/view-helpers'))
   var app = express()
   var api = require(path.join(SERVER_PATH, '/api'))
   var bodyParser = require('body-parser')
@@ -33,11 +33,11 @@ function startServer () {
   app.locals.helpers = expressHelpers
   
   // warm up cache by precompiling pug/jade templates
-  pug.compileFile(path.join(SERVER_PATH, '/views/index.pug'), { cache: true })
+  jade.compileFile(path.join(SERVER_PATH, '/views/index.jade'), { cache: true })
   
   // configure the view engine
   app
-    .set('view engine', 'pug')
+    .set('view engine', 'jade')
     .set('views', path.join(SERVER_PATH, '/views'))
   
   // configure static asset directory
