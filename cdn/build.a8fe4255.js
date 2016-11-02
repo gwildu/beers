@@ -1703,307 +1703,6 @@ process.chdir = function (dir) {
 process.umask = function() { return 0; };
 
 },{}],138:[function(require,module,exports){
-var Vue // late bind
-var map = Object.create(null)
-var shimmed = false
-var isBrowserify = false
-
-/**
- * Determine compatibility and apply patch.
- *
- * @param {Function} vue
- * @param {Boolean} browserify
- */
-
-exports.install = function (vue, browserify) {
-  if (shimmed) return
-  shimmed = true
-
-  Vue = vue
-  isBrowserify = browserify
-
-  exports.compatible = !!Vue.internalDirectives
-  if (!exports.compatible) {
-    console.warn(
-      '[HMR] vue-loader hot reload is only compatible with ' +
-      'Vue.js 1.0.0+.'
-    )
-    return
-  }
-
-  // patch view directive
-  patchView(Vue.internalDirectives.component)
-  console.log('[HMR] Vue component hot reload shim applied.')
-  // shim router-view if present
-  var routerView = Vue.elementDirective('router-view')
-  if (routerView) {
-    patchView(routerView)
-    console.log('[HMR] vue-router <router-view> hot reload shim applied.')
-  }
-}
-
-/**
- * Shim the view directive (component or router-view).
- *
- * @param {Object} View
- */
-
-function patchView (View) {
-  var unbuild = View.unbuild
-  View.unbuild = function (defer) {
-    if (!this.hotUpdating) {
-      var prevComponent = this.childVM && this.childVM.constructor
-      removeView(prevComponent, this)
-      // defer = true means we are transitioning to a new
-      // Component. Register this new component to the list.
-      if (defer) {
-        addView(this.Component, this)
-      }
-    }
-    // call original
-    return unbuild.call(this, defer)
-  }
-}
-
-/**
- * Add a component view to a Component's hot list
- *
- * @param {Function} Component
- * @param {Directive} view - view directive instance
- */
-
-function addView (Component, view) {
-  var id = Component && Component.options.hotID
-  if (id) {
-    if (!map[id]) {
-      map[id] = {
-        Component: Component,
-        views: [],
-        instances: []
-      }
-    }
-    map[id].views.push(view)
-  }
-}
-
-/**
- * Remove a component view from a Component's hot list
- *
- * @param {Function} Component
- * @param {Directive} view - view directive instance
- */
-
-function removeView (Component, view) {
-  var id = Component && Component.options.hotID
-  if (id) {
-    map[id].views.$remove(view)
-  }
-}
-
-/**
- * Create a record for a hot module, which keeps track of its construcotr,
- * instnaces and views (component directives or router-views).
- *
- * @param {String} id
- * @param {Object} options
- */
-
-exports.createRecord = function (id, options) {
-  if (typeof options === 'function') {
-    options = options.options
-  }
-  if (typeof options.el !== 'string' && typeof options.data !== 'object') {
-    makeOptionsHot(id, options)
-    map[id] = {
-      Component: null,
-      views: [],
-      instances: []
-    }
-  }
-}
-
-/**
- * Make a Component options object hot.
- *
- * @param {String} id
- * @param {Object} options
- */
-
-function makeOptionsHot (id, options) {
-  options.hotID = id
-  injectHook(options, 'created', function () {
-    var record = map[id]
-    if (!record.Component) {
-      record.Component = this.constructor
-    }
-    record.instances.push(this)
-  })
-  injectHook(options, 'beforeDestroy', function () {
-    map[id].instances.$remove(this)
-  })
-}
-
-/**
- * Inject a hook to a hot reloadable component so that
- * we can keep track of it.
- *
- * @param {Object} options
- * @param {String} name
- * @param {Function} hook
- */
-
-function injectHook (options, name, hook) {
-  var existing = options[name]
-  options[name] = existing
-    ? Array.isArray(existing)
-      ? existing.concat(hook)
-      : [existing, hook]
-    : [hook]
-}
-
-/**
- * Update a hot component.
- *
- * @param {String} id
- * @param {Object|null} newOptions
- * @param {String|null} newTemplate
- */
-
-exports.update = function (id, newOptions, newTemplate) {
-  var record = map[id]
-  // force full-reload if an instance of the component is active but is not
-  // managed by a view
-  if (!record || (record.instances.length && !record.views.length)) {
-    console.log('[HMR] Root or manually-mounted instance modified. Full reload may be required.')
-    if (!isBrowserify) {
-      window.location.reload()
-    } else {
-      // browserify-hmr somehow sends incomplete bundle if we reload here
-      return
-    }
-  }
-  if (!isBrowserify) {
-    // browserify-hmr already logs this
-    console.log('[HMR] Updating component: ' + format(id))
-  }
-  var Component = record.Component
-  // update constructor
-  if (newOptions) {
-    // in case the user exports a constructor
-    Component = record.Component = typeof newOptions === 'function'
-      ? newOptions
-      : Vue.extend(newOptions)
-    makeOptionsHot(id, Component.options)
-  }
-  if (newTemplate) {
-    Component.options.template = newTemplate
-  }
-  // handle recursive lookup
-  if (Component.options.name) {
-    Component.options.components[Component.options.name] = Component
-  }
-  // reset constructor cached linker
-  Component.linker = null
-  // reload all views
-  record.views.forEach(function (view) {
-    updateView(view, Component)
-  })
-  // flush devtools
-  if (window.__VUE_DEVTOOLS_GLOBAL_HOOK__) {
-    window.__VUE_DEVTOOLS_GLOBAL_HOOK__.emit('flush')
-  }
-}
-
-/**
- * Update a component view instance
- *
- * @param {Directive} view
- * @param {Function} Component
- */
-
-function updateView (view, Component) {
-  if (!view._bound) {
-    return
-  }
-  view.Component = Component
-  view.hotUpdating = true
-  // disable transitions
-  view.vm._isCompiled = false
-  // save state
-  var state = extractState(view.childVM)
-  // remount, make sure to disable keep-alive
-  var keepAlive = view.keepAlive
-  view.keepAlive = false
-  view.mountComponent()
-  view.keepAlive = keepAlive
-  // restore state
-  restoreState(view.childVM, state, true)
-  // re-eanble transitions
-  view.vm._isCompiled = true
-  view.hotUpdating = false
-}
-
-/**
- * Extract state from a Vue instance.
- *
- * @param {Vue} vm
- * @return {Object}
- */
-
-function extractState (vm) {
-  return {
-    cid: vm.constructor.cid,
-    data: vm.$data,
-    children: vm.$children.map(extractState)
-  }
-}
-
-/**
- * Restore state to a reloaded Vue instance.
- *
- * @param {Vue} vm
- * @param {Object} state
- */
-
-function restoreState (vm, state, isRoot) {
-  var oldAsyncConfig
-  if (isRoot) {
-    // set Vue into sync mode during state rehydration
-    oldAsyncConfig = Vue.config.async
-    Vue.config.async = false
-  }
-  // actual restore
-  if (isRoot || !vm._props) {
-    vm.$data = state.data
-  } else {
-    Object.keys(state.data).forEach(function (key) {
-      if (!vm._props[key]) {
-        // for non-root, only restore non-props fields
-        vm.$data[key] = state.data[key]
-      }
-    })
-  }
-  // verify child consistency
-  var hasSameChildren = vm.$children.every(function (c, i) {
-    return state.children[i] && state.children[i].cid === c.constructor.cid
-  })
-  if (hasSameChildren) {
-    // rehydrate children
-    vm.$children.forEach(function (c, i) {
-      restoreState(c, state.children[i])
-    })
-  }
-  if (isRoot) {
-    Vue.config.async = oldAsyncConfig
-  }
-}
-
-function format (id) {
-  var match = id.match(/[^\/]+\.vue$/)
-  return match ? match[0] : id
-}
-
-},{}],139:[function(require,module,exports){
 /*!
  * vue-resource v1.0.3
  * https://github.com/vuejs/vue-resource
@@ -3522,7 +3221,7 @@ if (typeof window !== 'undefined' && window.Vue) {
 }
 
 module.exports = plugin;
-},{}],140:[function(require,module,exports){
+},{}],139:[function(require,module,exports){
 /**
  * vue-router v2.0.0
  * (c) 2016 Evan You
@@ -5360,7 +5059,7 @@ if (inBrowser && window.Vue) {
 return VueRouter;
 
 })));
-},{}],141:[function(require,module,exports){
+},{}],140:[function(require,module,exports){
 (function (process){
 /*!
  * Vue.js v2.0.2
@@ -10971,7 +10670,7 @@ setTimeout(function () {
 module.exports = Vue$2;
 
 }).call(this,require('_process'))
-},{"_process":137}],142:[function(require,module,exports){
+},{"_process":137}],141:[function(require,module,exports){
 /*!
  * Vue.js v2.0.2
  * (c) 2014-2016 Evan You
@@ -18488,7 +18187,7 @@ return Vue$3;
 
 })));
 
-},{}],143:[function(require,module,exports){
+},{}],142:[function(require,module,exports){
 var inserted = exports.cache = {}
 
 exports.insert = function (css) {
@@ -18508,7 +18207,7 @@ exports.insert = function (css) {
   return elem
 }
 
-},{}],144:[function(require,module,exports){
+},{}],143:[function(require,module,exports){
 exports.sync = function (store, router) {
   store.registerModule('route', {
     state: {},
@@ -18554,7 +18253,7 @@ exports.sync = function (store, router) {
   })
 }
 
-},{}],145:[function(require,module,exports){
+},{}],144:[function(require,module,exports){
 /**
  * vuex v2.0.0
  * (c) 2016 Evan You
@@ -19083,9 +18782,9 @@ var index = {
 return index;
 
 })));
-},{}],146:[function(require,module,exports){
+},{}],145:[function(require,module,exports){
 var __vueify_insert__ = require("vueify/lib/insert-css")
-var __vueify_style__ = __vueify_insert__.insert("/* Taken from getBootstrap.com */\n/*******************************/\n/*! normalize.css v3.0.3 | MIT License | github.com/necolas/normalize.css */\nhtml {\n  font-family: sans-serif;\n  -ms-text-size-adjust: 100%;\n  -webkit-text-size-adjust: 100%;\n}\nbody {\n  margin: 0;\n}\narticle,\naside,\ndetails,\nfigcaption,\nfigure,\nfooter,\nheader,\nhgroup,\nmain,\nmenu,\nnav,\nsection,\nsummary {\n  display: block;\n}\naudio,\ncanvas,\nprogress,\nvideo {\n  display: inline-block;\n  vertical-align: baseline;\n}\naudio:not([controls]) {\n  display: none;\n  height: 0;\n}\n[hidden],\ntemplate {\n  display: none;\n}\na {\n  background-color: transparent;\n}\na:active,\na:hover {\n  outline: 0;\n}\nabbr[title] {\n  border-bottom: 1px dotted;\n}\nb,\nstrong {\n  font-weight: bold;\n}\ndfn {\n  font-style: italic;\n}\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\nmark {\n  background: #ff0;\n  color: #000;\n}\nsmall {\n  font-size: 80%;\n}\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\nsup {\n  top: -0.5em;\n}\nsub {\n  bottom: -0.25em;\n}\nimg {\n  border: 0;\n}\nsvg:not(:root) {\n  overflow: hidden;\n}\nfigure {\n  margin: 1em 40px;\n}\nhr {\n  box-sizing: content-box;\n  height: 0;\n}\npre {\n  overflow: auto;\n}\ncode,\nkbd,\npre,\nsamp {\n  font-family: monospace, monospace;\n  font-size: 1em;\n}\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  color: inherit;\n  font: inherit;\n  margin: 0;\n}\nbutton {\n  overflow: visible;\n}\nbutton,\nselect {\n  text-transform: none;\n}\nbutton,\nhtml input[type=\"button\"],\ninput[type=\"reset\"],\ninput[type=\"submit\"] {\n  -webkit-appearance: button;\n  cursor: pointer;\n}\nbutton[disabled],\nhtml input[disabled] {\n  cursor: default;\n}\nbutton::-moz-focus-inner,\ninput::-moz-focus-inner {\n  border: 0;\n  padding: 0;\n}\ninput {\n  line-height: normal;\n}\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  box-sizing: border-box;\n  padding: 0;\n}\ninput[type=\"number\"]::-webkit-inner-spin-button,\ninput[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\ninput[type=\"search\"] {\n  -webkit-appearance: textfield;\n  box-sizing: content-box;\n}\ninput[type=\"search\"]::-webkit-search-cancel-button,\ninput[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\nfieldset {\n  border: 1px solid #c0c0c0;\n  margin: 0 2px;\n  padding: 0.35em 0.625em 0.75em;\n}\nlegend {\n  border: 0;\n  padding: 0;\n}\ntextarea {\n  overflow: auto;\n}\noptgroup {\n  font-weight: bold;\n}\ntable {\n  border-collapse: collapse;\n  border-spacing: 0;\n}\ntd,\nth {\n  padding: 0;\n}\nbody {\n  background-color: orange;\n  color: #573D10;\n}\n")
+var __vueify_style__ = __vueify_insert__.insert("/*! normalize.css v3.0.3 | MIT License | github.com/necolas/normalize.css */html{font-family:sans-serif;-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}body{margin:0}article,aside,details,figcaption,figure,footer,header,hgroup,main,menu,nav,section,summary{display:block}audio,canvas,progress,video{display:inline-block;vertical-align:baseline}audio:not([controls]){display:none;height:0}[hidden],template{display:none}a{background-color:transparent}a:active,a:hover{outline:0}abbr[title]{border-bottom:1px dotted}b,strong{font-weight:700}dfn{font-style:italic}h1{font-size:2em;margin:.67em 0}mark{background:#ff0;color:#000}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sup{top:-.5em}sub{bottom:-.25em}img{border:0}svg:not(:root){overflow:hidden}figure{margin:1em 40px}hr{box-sizing:content-box;height:0}pre{overflow:auto}code,kbd,pre,samp{font-family:monospace,monospace;font-size:1em}button,input,optgroup,select,textarea{color:inherit;font:inherit;margin:0}button{overflow:visible}button,select{text-transform:none}button,html input[type=button],input[type=reset],input[type=submit]{-webkit-appearance:button;cursor:pointer}button[disabled],html input[disabled]{cursor:default}button::-moz-focus-inner,input::-moz-focus-inner{border:0;padding:0}input{line-height:normal}input[type=checkbox],input[type=radio]{box-sizing:border-box;padding:0}input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{height:auto}input[type=search]{-webkit-appearance:textfield;box-sizing:content-box}input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-search-decoration{-webkit-appearance:none}fieldset{border:1px solid silver;margin:0 2px;padding:.35em .625em .75em}legend{border:0;padding:0}textarea{overflow:auto}optgroup{font-weight:700}table{border-collapse:collapse;border-spacing:0}td,th{padding:0}body{background-color:orange;color:#573d10}")
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19104,22 +18803,9 @@ exports.default = {
   }
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<section id=\"app\">\n  \n  <gwi-header></gwi-header>\n  \n  <router-view></router-view>\n  \n</section>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  module.hot.dispose(function () {
-    __vueify_insert__.cache["/* Taken from getBootstrap.com */\n/*******************************/\n/*! normalize.css v3.0.3 | MIT License | github.com/necolas/normalize.css */\nhtml {\n  font-family: sans-serif;\n  -ms-text-size-adjust: 100%;\n  -webkit-text-size-adjust: 100%;\n}\nbody {\n  margin: 0;\n}\narticle,\naside,\ndetails,\nfigcaption,\nfigure,\nfooter,\nheader,\nhgroup,\nmain,\nmenu,\nnav,\nsection,\nsummary {\n  display: block;\n}\naudio,\ncanvas,\nprogress,\nvideo {\n  display: inline-block;\n  vertical-align: baseline;\n}\naudio:not([controls]) {\n  display: none;\n  height: 0;\n}\n[hidden],\ntemplate {\n  display: none;\n}\na {\n  background-color: transparent;\n}\na:active,\na:hover {\n  outline: 0;\n}\nabbr[title] {\n  border-bottom: 1px dotted;\n}\nb,\nstrong {\n  font-weight: bold;\n}\ndfn {\n  font-style: italic;\n}\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\nmark {\n  background: #ff0;\n  color: #000;\n}\nsmall {\n  font-size: 80%;\n}\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\nsup {\n  top: -0.5em;\n}\nsub {\n  bottom: -0.25em;\n}\nimg {\n  border: 0;\n}\nsvg:not(:root) {\n  overflow: hidden;\n}\nfigure {\n  margin: 1em 40px;\n}\nhr {\n  box-sizing: content-box;\n  height: 0;\n}\npre {\n  overflow: auto;\n}\ncode,\nkbd,\npre,\nsamp {\n  font-family: monospace, monospace;\n  font-size: 1em;\n}\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  color: inherit;\n  font: inherit;\n  margin: 0;\n}\nbutton {\n  overflow: visible;\n}\nbutton,\nselect {\n  text-transform: none;\n}\nbutton,\nhtml input[type=\"button\"],\ninput[type=\"reset\"],\ninput[type=\"submit\"] {\n  -webkit-appearance: button;\n  cursor: pointer;\n}\nbutton[disabled],\nhtml input[disabled] {\n  cursor: default;\n}\nbutton::-moz-focus-inner,\ninput::-moz-focus-inner {\n  border: 0;\n  padding: 0;\n}\ninput {\n  line-height: normal;\n}\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  box-sizing: border-box;\n  padding: 0;\n}\ninput[type=\"number\"]::-webkit-inner-spin-button,\ninput[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\ninput[type=\"search\"] {\n  -webkit-appearance: textfield;\n  box-sizing: content-box;\n}\ninput[type=\"search\"]::-webkit-search-cancel-button,\ninput[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\nfieldset {\n  border: 1px solid #c0c0c0;\n  margin: 0 2px;\n  padding: 0.35em 0.625em 0.75em;\n}\nlegend {\n  border: 0;\n  padding: 0;\n}\ntextarea {\n  overflow: auto;\n}\noptgroup {\n  font-weight: bold;\n}\ntable {\n  border-collapse: collapse;\n  border-spacing: 0;\n}\ntd,\nth {\n  padding: 0;\n}\nbody {\n  background-color: orange;\n  color: #573D10;\n}\n"] = false
-    document.head.removeChild(__vueify_style__)
-  })
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-0c4ccba6", module.exports)
-  } else {
-    hotAPI.update("_v-0c4ccba6", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"component_header":155,"vue":141,"vue-hot-reload-api":138,"vueify/lib/insert-css":143}],147:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<section id=app><gwi-header></gwi-header><router-view></router-view></section>"
+
+},{"component_header":154,"vueify/lib/insert-css":142}],146:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -19188,7 +18874,7 @@ var app = new _vue2.default({
 exports.default = { app: app, router: router, store: store };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./app.vue":146,"app_routing":150,"app_vuex":151,"babel-runtime/core-js/promise":2,"core-js/fn/promise":4,"vue-router":140,"vue/dist/vue":142,"vuex":145,"vuex-router-sync":144}],148:[function(require,module,exports){
+},{"./app.vue":145,"app_routing":149,"app_vuex":150,"babel-runtime/core-js/promise":2,"core-js/fn/promise":4,"vue-router":139,"vue/dist/vue":141,"vuex":144,"vuex-router-sync":143}],147:[function(require,module,exports){
 var Vue = require('vue')
 var VueResource = require('vue-resource')
 var config = require('app_config')
@@ -19212,22 +18898,20 @@ module.exports = {
   beers: Vue.resource(config.API_ROOT + 'beers')
 }
 
-},{"app_config":149,"app_routing":150,"vue":141,"vue-resource":139}],149:[function(require,module,exports){
-(function (process){
+},{"app_config":148,"app_routing":149,"vue":140,"vue-resource":138}],148:[function(require,module,exports){
 'use strict'
 
-var isProd = (process.env.NODE_ENV === 'production')
+var isProd = ("production" === 'production')
 
 module.exports = {
   API_ROOT: isProd
     ? 'http://138.68.68.69:57928/api/'
-    : 'http://138.68.68.69:57928/api/',
+    : 'http://localhost:8085/api/',
   COOKIE_PREFIX: 'pro_',
   ENABLE_DEBUG_OVERLAY: !isProd
 }
 
-}).call(this,require('_process'))
-},{"_process":137}],150:[function(require,module,exports){
+},{}],149:[function(require,module,exports){
 'use strict';
 
 var routes = [{
@@ -19237,7 +18921,7 @@ var routes = [{
 
 module.exports = routes;
 
-},{"page_home":160}],151:[function(require,module,exports){
+},{"page_home":159}],150:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19266,7 +18950,7 @@ var modules = {
 
 exports.default = modules;
 
-},{"vuex_beers":161,"vuex_messages":162,"vuex_user":163}],152:[function(require,module,exports){
+},{"vuex_beers":160,"vuex_messages":161,"vuex_user":162}],151:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19276,20 +18960,11 @@ exports.default = {
   props: ['name', 'averageVote']
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<h3 class=\"beer_info\">\n  {{name}}<br>{{averageVote.toFixed(1)}}\n</h3>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-2bba348e", module.exports)
-  } else {
-    hotAPI.update("_v-2bba348e", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"vue":141,"vue-hot-reload-api":138}],153:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<h3 class=beer_info>{{name}}<br>{{averageVote.toFixed(1)}}</h3>"
+
+},{}],152:[function(require,module,exports){
 var __vueify_insert__ = require("vueify/lib/insert-css")
-var __vueify_style__ = __vueify_insert__.insert(".beer {\n  border-radius: 2px;\n  margin: 0 10px 10px 10px;\n  padding: 10px;\n  display: -webkit-box;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-box-align: center;\n      -ms-flex-align: center;\n          align-items: center;\n  -webkit-box-pack: justify;\n      -ms-flex-pack: justify;\n          justify-content: space-between;\n}\n.beer .coaster {\n  margin-right: 10px;\n}\n.beer_text {\n  -webkit-box-flex: 1;\n      -ms-flex-positive: 1;\n          flex-grow: 1;\n}\n")
+var __vueify_style__ = __vueify_insert__.insert(".beer{border-radius:2px;margin:0 10px 10px;padding:10px;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:justify;-ms-flex-pack:justify;justify-content:space-between}.beer .coaster{margin-right:10px}.beer_text{-webkit-box-flex:1;-ms-flex-positive:1;flex-grow:1}")
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19349,24 +19024,11 @@ exports.default = {
   }))
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div v-if=\"coasterImg\" class=\"beer\">\n  <gwi-coaster :img=\"coasterImg\"></gwi-coaster>\n  <div class=\"beer_text\">\n    <gwi-beer-info :name=\"beer.name\" :average-vote=\"beer.averageVote\"></gwi-beer-info>\n    <gwi-vote :vote=\"userVote\" @vote=\"updateVote\"></gwi-vote>\n  </div>\n  \n</div>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  module.hot.dispose(function () {
-    __vueify_insert__.cache[".beer {\n  border-radius: 2px;\n  margin: 0 10px 10px 10px;\n  padding: 10px;\n  display: -webkit-box;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-box-align: center;\n      -ms-flex-align: center;\n          align-items: center;\n  -webkit-box-pack: justify;\n      -ms-flex-pack: justify;\n          justify-content: space-between;\n}\n.beer .coaster {\n  margin-right: 10px;\n}\n.beer_text {\n  -webkit-box-flex: 1;\n      -ms-flex-positive: 1;\n          flex-grow: 1;\n}\n"] = false
-    document.head.removeChild(__vueify_style__)
-  })
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-66c5ff8e", module.exports)
-  } else {
-    hotAPI.update("_v-66c5ff8e", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"babel-runtime/helpers/extends":3,"component_beer-info":152,"component_vote":157,"element_coaster":158,"vue":141,"vue-hot-reload-api":138,"vueify/lib/insert-css":143,"vuex":145}],154:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<div v-if=coasterImg class=beer><gwi-coaster :img=coasterImg></gwi-coaster><div class=beer_text><gwi-beer-info :name=beer.name :average-vote=beer.averageVote></gwi-beer-info><gwi-vote :vote=userVote @vote=updateVote></gwi-vote></div></div>"
+
+},{"babel-runtime/helpers/extends":3,"component_beer-info":151,"component_vote":156,"element_coaster":157,"vueify/lib/insert-css":142,"vuex":144}],153:[function(require,module,exports){
 var __vueify_insert__ = require("vueify/lib/insert-css")
-var __vueify_style__ = __vueify_insert__.insert(".beers {\n  list-style-type: none;\n  padding: 0;\n}\n")
+var __vueify_style__ = __vueify_insert__.insert(".beers{list-style-type:none;padding:0}")
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19407,42 +19069,16 @@ exports.default = {
   }
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n\n<ul class=\"beers\" v-if=\"user.name\">\n  <li v-for=\"(beer, beerIndex) in beers\">\n    <gwi-beer :beer=\"beer\" :beer-index=\"beerIndex\"></gwi-beer>\n  </li>\n</ul>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  module.hot.dispose(function () {
-    __vueify_insert__.cache[".beers {\n  list-style-type: none;\n  padding: 0;\n}\n"] = false
-    document.head.removeChild(__vueify_style__)
-  })
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-1e4a99d1", module.exports)
-  } else {
-    hotAPI.update("_v-1e4a99d1", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"babel-runtime/helpers/extends":3,"component_beer":153,"vue":141,"vue-hot-reload-api":138,"vueify/lib/insert-css":143,"vuex":145}],155:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<ul class=beers v-if=user.name><li v-for=\"(beer, beerIndex) in beers\"><gwi-beer :beer=beer :beer-index=beerIndex></gwi-beer></ul>"
+
+},{"babel-runtime/helpers/extends":3,"component_beer":152,"vueify/lib/insert-css":142,"vuex":144}],154:[function(require,module,exports){
 var __vueify_insert__ = require("vueify/lib/insert-css")
-var __vueify_style__ = __vueify_insert__.insert(".header {\n  background-color: white;\n  padding: 30px 30px 0 30px;\n  box-shadow: 0 15px 50px 23px white;\n}\n.header_title {\n  margin: 0;\n  text-align: center;\n}\n")
+var __vueify_style__ = __vueify_insert__.insert(".header{background-color:#fff;padding:30px 30px 0;box-shadow:0 15px 50px 23px #fff}.header_title{margin:0;text-align:center}")
 "use strict";
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<header class=\"header\">\n  <h1 class=\"header_title\">Beer O'Clock</h1>\n</header>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  module.hot.dispose(function () {
-    __vueify_insert__.cache[".header {\n  background-color: white;\n  padding: 30px 30px 0 30px;\n  box-shadow: 0 15px 50px 23px white;\n}\n.header_title {\n  margin: 0;\n  text-align: center;\n}\n"] = false
-    document.head.removeChild(__vueify_style__)
-  })
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-cc85d5aa", module.exports)
-  } else {
-    hotAPI.update("_v-cc85d5aa", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"vue":141,"vue-hot-reload-api":138,"vueify/lib/insert-css":143}],156:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<header class=header><h1 class=header_title>Beer O'Clock</h1></header>"
+
+},{"vueify/lib/insert-css":142}],155:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19499,18 +19135,9 @@ exports.default = {
   }
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n\n<div class=\"user\">\n  <div v-if=\"!userName\" class=\"user_loggedOut\">\n    <input type=\"text\" placeholder=\"put your name here first\" v-model=\"inputUserName\" @keyup.enter=\"saveUser\">\n    <button @click=\"saveUser\" @enter=\"saveUser\">save\n    </button>\n  </div>\n  <div v-if=\"userName\" class=\"user_loggedIn\">\n    Hello {{userName}} - please put your vote:\n  </div>\n</div>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-66e3ebe9", module.exports)
-  } else {
-    hotAPI.update("_v-66e3ebe9", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"babel-runtime/helpers/extends":3,"vue":141,"vue-hot-reload-api":138,"vuex":145}],157:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<div class=user><div v-if=!userName class=user_loggedOut><input type=text placeholder=\"put your name here first\" v-model=inputUserName @keyup.enter=saveUser> <button @click=saveUser @enter=saveUser>save</button></div><div v-if=userName class=user_loggedIn>Hello {{userName}} - please put your vote:</div></div>"
+
+},{"babel-runtime/helpers/extends":3,"vuex":144}],156:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19544,20 +19171,11 @@ exports.default = {
   }
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"vote\">\n  <span>Your vote</span>\n  <gwi-stars :value=\"value\" how-many=\"5\" @vote=\"updateVote\"></gwi-stars>\n  <button v-if=\"false\" @click=\"active = true\">Vote\n  </button>\n  <textarea v-if=\"false\" v-model=\"userStatement\" placeholder=\"You can enter a statement here...\"></textarea>\n</div>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-df941e70", module.exports)
-  } else {
-    hotAPI.update("_v-df941e70", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"element_stars":159,"vue":141,"vue-hot-reload-api":138}],158:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<div class=vote><span>Your vote</span><gwi-stars :value=value how-many=5 @vote=updateVote></gwi-stars><button v-if=false @click=\"active = true\">Vote</button><textarea v-if=false v-model=userStatement placeholder=\"You can enter a statement here...\"></textarea></div>"
+
+},{"element_stars":158}],157:[function(require,module,exports){
 var __vueify_insert__ = require("vueify/lib/insert-css")
-var __vueify_style__ = __vueify_insert__.insert(".coaster img {\n  border-radius: 55px;\n  border: 5px solid;\n  -webkit-box-shadow: 0 0 20px 6px white;\n  -moz-box-shadow: 0 0 20px 6px white;\n  box-shadow: 0 0 20px 6px white;\n}\n")
+var __vueify_style__ = __vueify_insert__.insert(".coaster img{border-radius:55px;border:5px solid;-webkit-box-shadow:0 0 20px 6px #fff;-moz-box-shadow:0 0 20px 6px #fff;box-shadow:0 0 20px 6px #fff}")
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19572,24 +19190,11 @@ exports.default = {
   }
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"coaster\">\n  <img :src=\"url\" alt=\"beer coaster\">\n</div>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  module.hot.dispose(function () {
-    __vueify_insert__.cache[".coaster img {\n  border-radius: 55px;\n  border: 5px solid;\n  -webkit-box-shadow: 0 0 20px 6px white;\n  -moz-box-shadow: 0 0 20px 6px white;\n  box-shadow: 0 0 20px 6px white;\n}\n"] = false
-    document.head.removeChild(__vueify_style__)
-  })
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-c4f182e0", module.exports)
-  } else {
-    hotAPI.update("_v-c4f182e0", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"vue":141,"vue-hot-reload-api":138,"vueify/lib/insert-css":143}],159:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<div class=coaster><img :src=url alt=\"beer coaster\"></div>"
+
+},{"vueify/lib/insert-css":142}],158:[function(require,module,exports){
 var __vueify_insert__ = require("vueify/lib/insert-css")
-var __vueify_style__ = __vueify_insert__.insert(".stars {\n  font-size: 28px;\n}\n")
+var __vueify_style__ = __vueify_insert__.insert(".stars{font-size:28px}")
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -19621,24 +19226,11 @@ exports.default = {
   }
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"stars\">\n  <span v-for=\"star in stars\" @click=\"updateStars(star.value)\">{{star.icon}}</span>\n</div>\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  module.hot.dispose(function () {
-    __vueify_insert__.cache[".stars {\n  font-size: 28px;\n}\n"] = false
-    document.head.removeChild(__vueify_style__)
-  })
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-369b826e", module.exports)
-  } else {
-    hotAPI.update("_v-369b826e", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"vue":141,"vue-hot-reload-api":138,"vueify/lib/insert-css":143}],160:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<div class=stars><span v-for=\"star in stars\" @click=updateStars(star.value)>{{star.icon}}</span></div>"
+
+},{"vueify/lib/insert-css":142}],159:[function(require,module,exports){
 var __vueify_insert__ = require("vueify/lib/insert-css")
-var __vueify_style__ = __vueify_insert__.insert(".beerOClock {\n  margin-top: 60px;\n  text-align: center;\n}\n")
+var __vueify_style__ = __vueify_insert__.insert(".beerOClock{margin-top:60px;text-align:center}")
 'use strict';
 
 var _vuex = require('vuex');
@@ -19660,22 +19252,9 @@ module.exports = {
   }
 };
 if (module.exports.__esModule) module.exports = module.exports.default
-;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<section class=\"beerOClock\">\n  <gwi-user></gwi-user>\n  <gwi-beers></gwi-beers>\n  \n</section>\n\n"
-if (module.hot) {(function () {  module.hot.accept()
-  var hotAPI = require("vue-hot-reload-api")
-  hotAPI.install(require("vue"), true)
-  if (!hotAPI.compatible) return
-  module.hot.dispose(function () {
-    __vueify_insert__.cache[".beerOClock {\n  margin-top: 60px;\n  text-align: center;\n}\n"] = false
-    document.head.removeChild(__vueify_style__)
-  })
-  if (!module.hot.data) {
-    hotAPI.createRecord("_v-167f257c", module.exports)
-  } else {
-    hotAPI.update("_v-167f257c", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
-  }
-})()}
-},{"component_beers":154,"component_user":156,"vue":141,"vue-hot-reload-api":138,"vueify/lib/insert-css":143,"vuex":145}],161:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "<section class=beerOClock><gwi-user></gwi-user><gwi-beers></gwi-beers></section>"
+
+},{"component_beers":153,"component_user":155,"vueify/lib/insert-css":142,"vuex":144}],160:[function(require,module,exports){
 'use strict';
 
 var _promise = require('babel-runtime/core-js/promise');
@@ -19742,7 +19321,7 @@ module.exports = {
   }
 };
 
-},{"app_api":148,"babel-runtime/core-js/promise":2}],162:[function(require,module,exports){
+},{"app_api":147,"babel-runtime/core-js/promise":2}],161:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -19783,7 +19362,7 @@ module.exports = {
   }
 };
 
-},{}],163:[function(require,module,exports){
+},{}],162:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -19822,4 +19401,4 @@ module.exports = {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[147]);
+},{}]},{},[146]);
