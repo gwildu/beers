@@ -8,7 +8,7 @@
   },
   "scripts": {
     "setup": "mkdir -p dist",
-    "minify": "uglifyjs dist/build.js -m -c sequences,dead_code,conditionals,booleans,unused,if_return,join_vars,drop_console",
+    "minify": "uglifyjs dist/build.js -o ./dist/build.js -m -c sequences,dead_code,conditionals,booleans,unused,if_return,join_vars,drop_console",
     "build": "npm run build:vue && npm run minify && npm run revision",
     "build:vue": "browserify -e src/index.js > dist/build.js",
     "watchify": "cross-env NODE_PATH=./node_modules watchify -v -d src/index.js -o dist/build.js",
