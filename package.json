@@ -7,7 +7,7 @@
     "node": "^6.0.0"
   },
   "scripts": {
-    "setup": "mkdir -p dist",
+    "postinstall": "mkdirp dist cdn",
     "minify": "uglifyjs dist/build.js -o ./dist/build.js -m -c sequences,dead_code,conditionals,booleans,unused,if_return,join_vars,drop_console",
     "build": "npm run build:vue && npm run minify && npm run revision",
     "build:vue": "browserify -e src/index.js > dist/build.js",
@@ -18,7 +18,7 @@
     "livereload": "live-reload --port 9091 ./dist/",
     "test": "npm run test:lint",
     "test:prepare": "",
-    "test:lint": "eslint src/**/**.js src/**/**.vue server/**/**.js server/**.**.vue server.js",
+    "test:lint": "eslint \"src/**/**.js\" \"src/**/**.vue\" \"server/**/**.js\" \"server/**/**.vue\" \"server.js\"",
     "test:karma": "karma start"
   },
   "license": "MIT",
@@ -60,6 +60,7 @@
     "envify": "^3.4.1",
     "hashmark": "^4.1.0",
     "live-reload": "^1.1.0",
+    "mkdirp": "^0.5.1",
     "parallelshell": "^2.0.0",
     "replaceinfiles": "^1.1.4",
     "vueify": "^8.5.1",
