@@ -15,7 +15,7 @@ if (isProd) {
 
 module.exports = {
   asset: function (path) {
-    var newPath = assetMap && typeof assetMap[path] !== 'undefined' ? assetMap[path] : path
+    var newPath = isProd ? assetMap[path] : path
     console.info(newPath)
     return newPath
   },
