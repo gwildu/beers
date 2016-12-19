@@ -1,7 +1,7 @@
 var readFile = require('fs').readFileSync
 var exists = require('fs').accessSync
 var path = require('path')
-var manifest = path.join(path.resolve(''), '/dist/asset-manifest.json')
+var manifest = path.join(path.resolve('.'), 'app/dist/asset-manifest.json')
 var isProd = process.env.NODE_ENV === 'production'
 var assetMap = isProd ? JSON.parse(readFile(manifest, 'utf-8')) : ''
 
