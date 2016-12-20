@@ -1,47 +1,218 @@
 [
   {
+    "id": "plzen",
+    "name": "Plzeň",
+    "votes": [
+      {
+        "user": "nicolas",
+        "name": "Nicolas",
+        "vote": 5,
+        "statement": ""
+      },
+      {
+        "user": "marius",
+        "name": "Marius",
+        "vote": 4,
+        "statement": ""
+      },
+      {
+        "user": "michael",
+        "name": "Michael",
+        "vote": 4,
+        "statement": ""
+      },
+      {
+        "user": "edi",
+        "name": "Edi",
+        "vote": 2,
+        "statement": ""
+      },
+      {
+        "user": "jan_",
+        "name": "Jan ",
+        "vote": 5,
+        "statement": ""
+      }
+    ],
+    "averageVote": 4,
+    "images": [
+      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/plzen.jpg"
+    ]
+  },
+  {
     "id": "singha",
     "name": "Singha",
-    "votes": [],
-    "averageVote": 5,
+    "votes": [
+      {
+        "user": "marius",
+        "name": "Marius",
+        "vote": 4,
+        "statement": ""
+      },
+      {
+        "user": "michael",
+        "name": "Michael",
+        "vote": 4,
+        "statement": ""
+      },
+      {
+        "user": "edi",
+        "name": "Edi",
+        "vote": 3,
+        "statement": ""
+      },
+      {
+        "user": "jan_",
+        "name": "Jan ",
+        "vote": 4,
+        "statement": ""
+      }
+    ],
+    "averageVote": 3.75,
     "images": [
-      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/singha_xrehlp.jpg"
+      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/singha.jpg"
     ]
   },
   {
     "id": "rosengarten_maisgold_mini",
     "name": "Rosengarten Maisgold Mini",
-    "votes": [],
-    "averageVote": 0,
+    "votes": [
+      {
+        "user": "marius",
+        "name": "Marius",
+        "vote": 4,
+        "statement": ""
+      },
+      {
+        "user": "nicolas",
+        "name": "Nicolas",
+        "vote": 4,
+        "statement": ""
+      },
+      {
+        "user": "edi",
+        "name": "Edi",
+        "vote": 4,
+        "statement": ""
+      },
+      {
+        "user": "jan_",
+        "name": "Jan ",
+        "vote": 4,
+        "statement": ""
+      }
+    ],
+    "averageVote": 4,
     "images": [
-      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/maisgold_kdy1fl.jpg"
+      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/maisgold.jpg"
     ]
   },
   {
     "id": "sudwerk_goldminer",
     "name": "Sudwerk Gold Miner",
-    "votes": [],
-    "averageVote": 0,
+    "votes": [
+      {
+        "user": "marius",
+        "name": "Marius",
+        "vote": 3,
+        "statement": ""
+      },
+      {
+        "user": "nicolas",
+        "name": "Nicolas",
+        "vote": 4,
+        "statement": ""
+      },
+      {
+        "user": "edi",
+        "name": "Edi",
+        "vote": 3,
+        "statement": ""
+      },
+      {
+        "user": "jan_",
+        "name": "Jan ",
+        "vote": 3,
+        "statement": ""
+      }
+    ],
+    "averageVote": 3.25,
     "images": [
-      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/goldminer_ay0d8p.png"
+      "http://res.cloudinary.com/gwildunet/image/upload/v1482216316/beers/goldminer.png"
     ]
   },
   {
     "id": "chopfab",
     "name": "CHOPFAB",
-    "votes": [],
-    "averageVote": 0,
+    "votes": [
+      {
+        "user": "marius",
+        "name": "Marius",
+        "vote": 2,
+        "statement": ""
+      },
+      {
+        "user": "nicolas",
+        "name": "Nicolas",
+        "vote": 1,
+        "statement": ""
+      },
+      {
+        "user": "edi",
+        "name": "Edi",
+        "vote": 2,
+        "statement": ""
+      },
+      {
+        "user": "michael",
+        "name": "Michael",
+        "vote": 4,
+        "statement": ""
+      }
+    ],
+    "averageVote": 2.25,
     "images": [
-      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/chopfab_b9kjbv.jpg"
+      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/chopfab.jpg"
     ]
   },
   {
     "id": "brandlöscher",
     "name": "Brandlöscher",
-    "votes": [],
-    "averageVote": 0,
+    "votes": [
+      {
+        "user": "marius",
+        "name": "Marius",
+        "vote": 5,
+        "statement": ""
+      },
+      {
+        "user": "nicolas",
+        "name": "Nicolas",
+        "vote": 5,
+        "statement": ""
+      },
+      {
+        "user": "edi",
+        "name": "Edi",
+        "vote": 5,
+        "statement": ""
+      },
+      {
+        "user": "michael",
+        "name": "Michael",
+        "vote": 3,
+        "statement": ""
+      },
+      {
+        "user": "jan_",
+        "name": "Jan ",
+        "vote": 4,
+        "statement": ""
+      }
+    ],
+    "averageVote": 4.4,
     "images": [
-      "http://res.cloudinary.com/gwildu/image/upload/v1477020924/brandloescher_xbsojq.jpg"
+      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/brandloescher.jpg"
     ]
   }
 ]
