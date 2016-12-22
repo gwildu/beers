@@ -28,15 +28,15 @@
         "statement": ""
       },
       {
-        "user": "jan_",
-        "name": "Jan ",
+        "user": "jan",
+        "name": "Jan",
         "vote": 5,
         "statement": ""
       }
     ],
     "averageVote": 4,
     "images": [
-      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/plzen.jpg"
+      "http://res.cloudinary.com/gwildu/image/upload/v1482349495/beers/plzen.jpg"
     ]
   },
   {
@@ -62,15 +62,15 @@
         "statement": ""
       },
       {
-        "user": "jan_",
-        "name": "Jan ",
+        "user": "jan",
+        "name": "Jan",
         "vote": 4,
         "statement": ""
       }
     ],
     "averageVote": 3.75,
     "images": [
-      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/singha.jpg"
+      "http://res.cloudinary.com/gwildu/image/upload/v1482349500/beers/singha.jpg"
     ]
   },
   {
@@ -96,15 +96,15 @@
         "statement": ""
       },
       {
-        "user": "jan_",
-        "name": "Jan ",
+        "user": "jan",
+        "name": "Jan",
         "vote": 4,
         "statement": ""
       }
     ],
     "averageVote": 4,
     "images": [
-      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/maisgold.jpg"
+      "http://res.cloudinary.com/gwildu/image/upload/v1482349500/beers/maisgold.jpg"
     ]
   },
   {
@@ -130,15 +130,15 @@
         "statement": ""
       },
       {
-        "user": "jan_",
-        "name": "Jan ",
+        "user": "jan",
+        "name": "Jan",
         "vote": 3,
         "statement": ""
       }
     ],
     "averageVote": 3.25,
     "images": [
-      "http://res.cloudinary.com/gwildunet/image/upload/v1482216316/beers/goldminer.png"
+      "http://res.cloudinary.com/gwildu/image/upload/v1482349506/beers/goldminer.png"
     ]
   },
   {
@@ -172,7 +172,7 @@
     ],
     "averageVote": 2.25,
     "images": [
-      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/chopfab.jpg"
+      "http://res.cloudinary.com/gwildu/image/upload/v1482349499/beers/chopfab.jpg"
     ]
   },
   {
@@ -204,15 +204,15 @@
         "statement": ""
       },
       {
-        "user": "jan_",
-        "name": "Jan ",
+        "user": "jan",
+        "name": "Jan",
         "vote": 4,
         "statement": ""
       }
     ],
     "averageVote": 4.4,
     "images": [
-      "http://res.cloudinary.com/gwildunet/image/upload/v1482216315/beers/brandloescher.jpg"
+      "http://res.cloudinary.com/gwildu/image/upload/v1482349489/beers/brandloescher.jpg"
     ]
   }
 ]
