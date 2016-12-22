@@ -1,24 +1,12 @@
-var readFile = require('fs').readFileSync
-var exists = require('fs').accessSync
-var path = require('path')
-var manifest = path.join(path.resolve('.'), 'dist/asset-manifest.json')
-var isProd = process.env.NODE_ENV === 'production'
-var assetMap = isProd ? JSON.parse(readFile(manifest, 'utf-8')) : ''
-
-// preload asset-manifest.json if exists
-// if (isProd) {
-//   try {
-//     exists(manifest)
-//     var assetMap = JSON.parse(readFile(manifest, 'utf-8'))
-//   } catch (e) {
-//   }
-// }
+const readFile = require( 'fs' ).readFileSync;
+const path = require( 'path' );
+const manifest = path.join( path.resolve( '.' ), 'cdn/asset-manifest.json' );
+const isProd = process.env.NODE_ENV === 'production';
+const assetMap = isProd ? JSON.parse( readFile( manifest, 'utf-8' ) ) : '';
 
 module.exports = {
   asset: function (path) {
-    var newPath = isProd ? assetMap[path] : path
-    console.info(newPath)
-    return newPath
+    return isProd ? assetMap[path] : path
   },
   isProd: isProd
 }

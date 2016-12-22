@@ -15,5 +15,4 @@ build/Release
 
 .idea/
 
-#/dist/
-#/cdn/
+dist/
