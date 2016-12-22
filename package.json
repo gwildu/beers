@@ -8,11 +8,12 @@
     "npm": "^3.10.3"
   },
   "scripts": {
-    "postinstall": "mkdirp dist cdn",
-    "minify": "uglifyjs ./dist/build.js -o ./dist/build.js -m -c sequences,dead_code,conditionals,booleans,unused,if_return,join_vars,drop_console",
+    "postinstall": "npm install -g mkdirp && mkdirp dist cdn",
+    "build:clean": "rm -rf dist cdn",
     "build:vue": "browserify -e src/index.js > ./dist/build.js",
-    "revision": "hashmark -l 8 -m dist/asset-manifest.json dist/* cdn/{name}.{hash}{ext} | replaceinfiles -s cdn/* -d {dir}/{base}",
-    "build": "npm run build:vue && npm run minify && npm run revision",
+    "build:minify": "uglifyjs ./dist/build.js -o ./dist/build.js -m -c sequences,dead_code,conditionals,booleans,unused,if_return,join_vars,drop_console",
+    "build:revision": "hashmark -l 8 -m cdn/asset-manifest.json dist/* cdn/{name}.{hash}{ext} | replaceinfiles -s cdn/* -d {dir}/{base}",
+    "build": "npm run build:clean && mkdirp dist cdn && npm run build:vue && npm run build:minify && npm run build:revision",
     "watchify": "cross-env NODE_PATH=./node_modules watchify -v -d src/index.js -o ./dist/build.js",
     "serve": "node server.js",
     "start": "npm run serve",
@@ -20,7 +21,10 @@
     "test": "npm run test:lint",
     "test:prepare": "",
     "test:lint": "eslint \"src/**/**.js\" \"src/**/**.vue\" \"server/**/**.js\" \"server/**/**.vue\" \"server.js\"",
-    "test:karma": "karma start"
+    "test:karma": "karma start",
+    "deploy:prepare": "cross-env NODE_ENV=production npm run build",
+    "deploy:git": "git add . && git commit -m \"production build\" && git push dokku master",
+    "deploy": "npm run deploy:prepare && npm run deploy:git"
   },
   "license": "MIT",
   "dependencies": {
