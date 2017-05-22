@@ -1,2 +1,2 @@
 # beers
-A simple app for beer voting
+A simple app for beer voting.
